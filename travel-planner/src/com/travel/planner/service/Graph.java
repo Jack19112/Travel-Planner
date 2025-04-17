@@ -122,6 +122,18 @@ public class Graph {
         }
     }
 
+    public Set<String> getNodes() {
+        return adjacencyList.keySet();
+    }
+
+    public List<Edge> getEdges() {
+        List<Edge> allEdges = new ArrayList<>();
+        for (List<Edge> edges : adjacencyList.values()) {
+            allEdges.addAll(edges);
+        }
+        return allEdges;
+    }
+
     public PathResult findShortestPath(String start, String end, String criterion) {
 
         if (!adjacencyList.containsKey(start) || !adjacencyList.containsKey(end)) {
