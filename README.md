@@ -10,6 +10,8 @@ The core of the project is built on a graph data structure implemented using an 
 <br>
 <br>
 🔧 Technologies Used
+<br>
+<br>
 Java (with JavaFX for GUI)
 <br>
 MySQL (for data storage)
@@ -19,6 +21,7 @@ Dijkstra’s Algorithm (for shortest path calculation)
 <br>
 <br>
 🚀 Features
+<br>
 <br>
 Find optimal routes based on cost, time, or distance
 <br>
