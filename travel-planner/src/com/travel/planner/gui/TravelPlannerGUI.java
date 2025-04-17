@@ -1,14 +1,27 @@
 package com.travel.planner.gui;
 
+import com.travel.planner.model.Edge;
 import com.travel.planner.model.PathResult;
 import com.travel.planner.service.Graph;
 import javafx.application.Application;
 import javafx.geometry.Insets;
+import javafx.geometry.Point2D;
 import javafx.scene.Node;
 import javafx.scene.Scene;
 import javafx.scene.control.*;
 import javafx.scene.layout.*;
+import javafx.scene.paint.Color;
+import javafx.scene.shape.Circle;
+import javafx.scene.shape.Line;
+import javafx.scene.shape.Rectangle;
+import javafx.scene.text.Font;
+import javafx.scene.text.Text;
 import javafx.stage.Stage;
+
+import java.util.HashMap;
+import java.util.List;
+import java.util.Map;
+import java.util.Set;
 
 public class TravelPlannerGUI extends Application {
     private Graph graph = new Graph();
@@ -24,9 +37,7 @@ public class TravelPlannerGUI extends Application {
         mainLayout.setPadding(new Insets(20));
 
         GridPane inputGrid = createInputGrid();
-
         HBox actionButtons = createActionButtons();
-
         VBox resultBox = new VBox(10, new Label("Optimal Paths:"), resultList);
 
         mainLayout.getChildren().addAll(inputGrid, actionButtons, resultBox);
@@ -56,22 +67,127 @@ public class TravelPlannerGUI extends Application {
         Button addRoadBtn = new Button("Add Road Route");
         Button addTrainBtn = new Button("Add Train Route");
         Button addAirplaneBtn = new Button("Add Airplane Route");
+        Button showGraphBtn = new Button("Show Graph");
 
         String buttonStyle = "-fx-padding: 10 20; -fx-font-size: 14;";
         searchButton.setStyle(buttonStyle + "-fx-background-color: #4CAF50; -fx-text-fill: white;");
         addRoadBtn.setStyle(buttonStyle);
         addTrainBtn.setStyle(buttonStyle);
         addAirplaneBtn.setStyle(buttonStyle);
+        showGraphBtn.setStyle(buttonStyle + "-fx-background-color: #9C27B0; -fx-text-fill: white;");
 
         searchButton.setOnAction(e -> showAllPaths());
         addRoadBtn.setOnAction(e -> showAddRouteDialog("road"));
         addTrainBtn.setOnAction(e -> showAddRouteDialog("train"));
         addAirplaneBtn.setOnAction(e -> showAddRouteDialog("airplane"));
+        showGraphBtn.setOnAction(e -> showGraph());
 
-        HBox buttonBox = new HBox(15, searchButton, addRoadBtn, addTrainBtn, addAirplaneBtn);
+        HBox buttonBox = new HBox(15, searchButton, addRoadBtn, addTrainBtn, addAirplaneBtn, showGraphBtn);
         buttonBox.setPadding(new Insets(15, 0, 15, 0));
 
         return buttonBox;
+    }
+
+    private void showGraph() {
+        Stage graphStage = new Stage();
+        graphStage.setTitle("Transportation Network Graph");
+
+        Pane graphPane = new Pane();
+        graphPane.setPrefSize(1200, 800);
+
+        Set<String> nodes = graph.getNodes();
+        List<Edge> edges = graph.getEdges();
+
+        double centerX = 600;
+        double centerY = 400;
+        double radius = 300;
+        double angleStep = 2 * Math.PI / nodes.size();
+
+        Map<String, Point2D> nodePositions = new HashMap<>();
+        int index = 0;
+        for (String node : nodes) {
+            double angle = index * angleStep;
+            double x = centerX + radius * Math.cos(angle);
+            double y = centerY + radius * Math.sin(angle);
+            nodePositions.put(node, new Point2D(x, y));
+            index++;
+        }
+
+        for (Edge edge : edges) {
+            Point2D sourcePos = nodePositions.get(edge.source);
+            Point2D destPos = nodePositions.get(edge.destination);
+
+            if (sourcePos != null && destPos != null) {
+                Line line = new Line(
+                        sourcePos.getX(), sourcePos.getY(),
+                        destPos.getX(), destPos.getY());
+
+                switch (edge.mode) {
+                    case "road" -> line.setStroke(Color.FORESTGREEN);
+                    case "train" -> line.setStroke(Color.ORANGE);
+                    case "airplane" -> line.setStroke(Color.DODGERBLUE);
+                    default -> line.setStroke(Color.GRAY);
+                }
+
+                line.setStrokeWidth(2);
+                graphPane.getChildren().add(line);
+
+                String edgeInfo = String.format("%s (₹%.0f, %.0fkm, %.1fh)",
+                        edge.mode, edge.cost, edge.distance, edge.time);
+
+                Text label = new Text(
+                        (sourcePos.getX() + destPos.getX()) / 2,
+                        (sourcePos.getY() + destPos.getY()) / 2,
+                        edgeInfo);
+                label.setFont(Font.font(10));
+                label.setFill(Color.DARKSLATEGRAY);
+                graphPane.getChildren().add(label);
+            }
+        }
+
+        for (String node : nodes) {
+            Point2D pos = nodePositions.get(node);
+            if (pos != null) {
+                Circle circle = new Circle(pos.getX(), pos.getY(), 20);
+                circle.setFill(Color.LIGHTBLUE);
+                circle.setStroke(Color.DARKBLUE);
+                circle.setStrokeWidth(2);
+
+                Text label = new Text(pos.getX() - 15, pos.getY() + 30, node);
+                label.setFont(Font.font(12));
+                label.setFill(Color.DARKBLUE);
+
+                graphPane.getChildren().addAll(circle, label);
+            }
+        }
+
+        VBox legend = new VBox(5);
+        legend.setPadding(new Insets(10));
+        legend.setStyle("-fx-background-color: rgba(255,255,255,0.8); -fx-border-color: #ccc;");
+        legend.setLayoutX(20);
+        legend.setLayoutY(20);
+
+        legend.getChildren().add(new Label("Transport Modes:"));
+        legend.getChildren().add(createLegendItem("Road", Color.FORESTGREEN));
+        legend.getChildren().add(createLegendItem("Train", Color.ORANGE));
+        legend.getChildren().add(createLegendItem("Airplane", Color.DODGERBLUE));
+
+        graphPane.getChildren().add(legend);
+
+        ScrollPane scrollPane = new ScrollPane(graphPane);
+        scrollPane.setFitToWidth(true);
+        scrollPane.setFitToHeight(true);
+
+        Scene scene = new Scene(scrollPane, 1000, 700);
+        graphStage.setScene(scene);
+        graphStage.show();
+    }
+
+    private HBox createLegendItem(String text, Color color) {
+        HBox item = new HBox(5);
+        Rectangle colorBox = new Rectangle(15, 15, color);
+        item.getChildren().addAll(colorBox, new Label(text));
+        return item;
     }
 
     private void showAddRouteDialog(String mode) {
